@@ -21,9 +21,16 @@ class VideoCallService {
     required String token,
   }) async {
     try {
-      _currentUser = User(id: userId, name: userName, image: null);
+      _currentUser = User(
+        id: userId,
+        name: userName,
+      );
 
-      _streamVideo = StreamVideo(apiKey, user: _currentUser!, userToken: token);
+      _streamVideo = StreamVideo(
+        apiKey,
+        user: _currentUser!,
+        userToken: token,
+      );
 
       log('Video call service initialized successfully');
     } catch (e) {
@@ -168,8 +175,7 @@ class _CallScreenState extends State<CallScreen> {
           stream: widget.call.state,
           builder: (context, snapshot) {
             final callState = snapshot.data;
-            final participants =
-                callState?.callParticipants.values.toList() ?? [];
+            final participants = callState?.callParticipants ?? [];
 
             return Stack(
               children: [

@@ -48,10 +48,10 @@ class _VideoCallScreenState extends State<VideoCallScreen>
 
   void _setupCall() async {
     try {
-      await widget.call.camera.enable();
-      await widget.call.microphone.enable();
+      await widget.call.setCameraEnabled(enabled: true);
+      await widget.call.setMicrophoneEnabled(enabled: true);
     } catch (e) {
-      print('Error setting up call: $e');
+      debugPrint('Error setting up call: $e');
     }
   }
 
@@ -76,7 +76,7 @@ class _VideoCallScreenState extends State<VideoCallScreen>
       backgroundColor: Colors.black,
       body: SafeArea(
         child: StreamBuilder<CallState>(
-          stream: widget.call.state.valueStream,
+          stream: widget.call.state,
           builder: (context, snapshot) {
             final callState = snapshot.data;
             final participants = callState?.callParticipants ?? [];
@@ -136,7 +136,7 @@ class _VideoCallScreenState extends State<VideoCallScreen>
                     borderRadius: BorderRadius.circular(60),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.primaryColor.withOpacity(0.3),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.3),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
@@ -173,7 +173,7 @@ class _VideoCallScreenState extends State<VideoCallScreen>
           Text(
             _isCallConnected ? 'Connected' : 'Calling...',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
               fontSize: 16,
             ),
           ),
@@ -194,7 +194,7 @@ class _VideoCallScreenState extends State<VideoCallScreen>
     );
   }
 
-  Widget _buildParticipantsView(List<CallParticipant> participants) {
+  Widget _buildParticipantsView(List<CallParticipantState> participants) {
     if (participants.length == 1) {
       return SizedBox.expand(
         child: ClipRRect(
@@ -202,6 +202,7 @@ class _VideoCallScreenState extends State<VideoCallScreen>
           child: StreamVideoRenderer(
             call: widget.call,
             participant: participants.first,
+            videoTrackType: SfuTrackType.video,
           ),
         ),
       );
@@ -224,7 +225,7 @@ class _VideoCallScreenState extends State<VideoCallScreen>
               border: Border.all(color: Colors.white24, width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withValues(alpha: 0.3),
                   blurRadius: 10,
                   offset: const Offset(0, 5),
                 ),
@@ -235,6 +236,7 @@ class _VideoCallScreenState extends State<VideoCallScreen>
               child: StreamVideoRenderer(
                 call: widget.call,
                 participant: participants[index],
+                videoTrackType: SfuTrackType.video,
               ),
             ),
           );
@@ -259,11 +261,7 @@ class _VideoCallScreenState extends State<VideoCallScreen>
             icon: _isCameraEnabled ? Icons.videocam : Icons.videocam_off,
             isActive: _isCameraEnabled,
             onPressed: () async {
-              if (_isCameraEnabled) {
-                await widget.call.camera.disable();
-              } else {
-                await widget.call.camera.enable();
-              }
+              await widget.call.setCameraEnabled(enabled: !_isCameraEnabled);
               setState(() {
                 _isCameraEnabled = !_isCameraEnabled;
               });
@@ -274,11 +272,7 @@ class _VideoCallScreenState extends State<VideoCallScreen>
             icon: _isMicrophoneEnabled ? Icons.mic : Icons.mic_off,
             isActive: _isMicrophoneEnabled,
             onPressed: () async {
-              if (_isMicrophoneEnabled) {
-                await widget.call.microphone.disable();
-              } else {
-                await widget.call.microphone.enable();
-              }
+              await widget.call.setMicrophoneEnabled(enabled: !_isMicrophoneEnabled);
               setState(() {
                 _isMicrophoneEnabled = !_isMicrophoneEnabled;
               });
@@ -299,7 +293,7 @@ class _VideoCallScreenState extends State<VideoCallScreen>
             icon: Icons.flip_camera_ios,
             isActive: true,
             onPressed: () async {
-              await widget.call.camera.flip();
+              await widget.call.flipCamera();
             },
           ),
         ],
@@ -325,7 +319,7 @@ class _VideoCallScreenState extends State<VideoCallScreen>
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -372,11 +366,22 @@ class _VideoCallScreenState extends State<VideoCallScreen>
             StreamBuilder<Duration>(
               stream: Stream.periodic(const Duration(seconds: 1)),
               builder: (context, snapshot) {
-                final duration =
-                    widget.call.state.value.duration ?? Duration.zero;
-                return Text(
-                  _formatDuration(duration),
-                  style: const TextStyle(
+                final callState = widget.call.state.value;
+                final startedAt = callState.startedAt;
+                if (startedAt != null) {
+                  final duration = DateTime.now().difference(startedAt);
+                  return Text(
+                    _formatDuration(duration),
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  );
+                }
+                return const Text(
+                  '00:00',
+                  style: TextStyle(
                     color: Colors.white70,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
