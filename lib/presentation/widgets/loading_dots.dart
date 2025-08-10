@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:chat_app/config/theme/app_theme.dart';
 
 class LoadingDots extends StatefulWidget {
   const LoadingDots({super.key});
@@ -16,7 +17,7 @@ class _LoadingDotsState extends State<LoadingDots>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1200),
     )..repeat();
   }
 
@@ -46,13 +47,13 @@ class _LoadingDotsState extends State<LoadingDots>
             );
 
             return Container(
-              width: 4,
-              height: 4,
-              margin: const EdgeInsets.symmetric(horizontal: 2),
+              width: 3,
+              height: 3,
+              margin: const EdgeInsets.symmetric(horizontal: 1),
               decoration: BoxDecoration(
                 color: Theme.of(
                   context,
-                ).primaryColor.withOpacity(0.3 + (0.7 * animation.value)),
+                ).primaryColor.withOpacity(0.4 + (0.6 * animation.value)),
                 shape: BoxShape.circle,
               ),
             );

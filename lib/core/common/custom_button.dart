@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:chat_app/config/theme/app_theme.dart';
 
 class CustomButton extends StatelessWidget {
   final Function()? onPressed;
@@ -22,12 +23,14 @@ class CustomButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Theme.of(context).colorScheme.primary,
+          backgroundColor: AppTheme.primaryColor,
           foregroundColor: Colors.black87,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
+          elevation: 0,
+          shadowColor: AppTheme.primaryColor.withOpacity(0.3),
         ),
         child:
             child ??

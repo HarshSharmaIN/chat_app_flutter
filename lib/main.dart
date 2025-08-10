@@ -4,11 +4,9 @@ import 'package:chat_app/data/services/service_locator.dart';
 import 'package:chat_app/logic/cubits/auth/auth_cubit.dart';
 import 'package:chat_app/logic/cubits/auth/auth_state.dart';
 import 'package:chat_app/logic/observer/app_life_cycle_observer.dart';
-import 'package:chat_app/presentation/home/home_screen.dart';
-import 'package:chat_app/presentation/screens/auth/login_screen.dart';
+import 'package:chat_app/presentation/splash/splash_screen.dart';
 import 'package:chat_app/router/app_router.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
@@ -55,18 +53,7 @@ class _MyAppState extends State<MyApp> {
         theme: AppTheme.lightTheme,
         navigatorKey: getIt<AppRouter>().navigatorKey,
         debugShowCheckedModeBanner: false,
-        home: BlocBuilder<AuthCubit, AuthState>(
-          bloc: getIt<AuthCubit>(),
-          builder: (context, state) {
-            if (state.status == AuthStatus.initial) {
-              return Scaffold(body: Center(child: CircularProgressIndicator()));
-            }
-            if (state.status == AuthStatus.authenticated) {
-              return HomeScreen();
-            }
-            return LoginScreen();
-          },
-        ),
+        home: const SplashScreen(),
       ),
     );
   }
