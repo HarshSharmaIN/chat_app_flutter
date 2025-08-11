@@ -76,7 +76,10 @@ class _VideoCallScreenState extends State<VideoCallScreen>
       backgroundColor: Colors.black,
       body: SafeArea(
         child: StreamBuilder<CallState>(
-          stream: widget.call.state,
+          stream: widget.call.state.asStream().asyncExpand(
+            (state) =>
+                Stream.periodic(const Duration(seconds: 1), (_) => state),
+          ),
           builder: (context, snapshot) {
             final callState = snapshot.data;
             final participants = callState?.callParticipants ?? [];
@@ -272,7 +275,9 @@ class _VideoCallScreenState extends State<VideoCallScreen>
             icon: _isMicrophoneEnabled ? Icons.mic : Icons.mic_off,
             isActive: _isMicrophoneEnabled,
             onPressed: () async {
-              await widget.call.setMicrophoneEnabled(enabled: !_isMicrophoneEnabled);
+              await widget.call.setMicrophoneEnabled(
+                enabled: !_isMicrophoneEnabled,
+              );
               setState(() {
                 _isMicrophoneEnabled = !_isMicrophoneEnabled;
               });

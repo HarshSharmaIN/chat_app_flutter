@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:chat_app/data/models/chat_message.dart';
 import 'package:chat_app/data/services/service_locator.dart';
+import 'package:chat_app/data/services/stream_token_service.dart';
 import 'package:chat_app/data/services/video_call_service.dart';
 import 'package:chat_app/config/theme/app_theme.dart';
 import 'package:chat_app/logic/cubits/chat/chat_cubit.dart';
@@ -9,6 +10,7 @@ import 'package:chat_app/presentation/widgets/loading_dots.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 
 class ChatMessageSceen extends StatefulWidget {
@@ -92,27 +94,50 @@ class _ChatMessageSceenState extends State<ChatMessageSceen> {
 
   Future<void> _startVideoCall() async {
     try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+          ),
+        ),
+      );
+
       final videoService = getIt<VideoCallService>();
-      
+
       // Initialize video service if not already done
-      if (videoService.streamVideo == null) {
-        // You'll need to get these from your Stream dashboard
-        await videoService.initialize( 
+      if (!videoService.isInitialized) {
+        final token = StreamTokenService.generateUserToken(
+          userId: _chatCubit.currentUserId,
+        );
+        
+        await videoService.initialize(
           userId: _chatCubit.currentUserId,
           userName: widget.currentUserName,
-          apiKey: 'your_stream_api_key', // Replace with your API key
-          token: 'your_user_token', // Replace with your user token
+          apiKey: dotenv.env['STREAM_API_KEY'] ?? 'your-api-key',
+          token: token,
         );
       }
 
-      final callId = '${_chatCubit.currentUserId}_${widget.receiverId}_${DateTime.now().millisecondsSinceEpoch}';
-      
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+
+      final callId =
+          '${_chatCubit.currentUserId}_${widget.receiverId}_${DateTime.now().millisecondsSinceEpoch}';
+
       await videoService.startCall(
-        callId: callId, 
+        callId: callId,
         memberIds: [widget.receiverId],
         context: context,
       );
     } catch (e) {
+      // Close loading dialog if it's open
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -272,7 +297,9 @@ class _ChatMessageSceenState extends State<ChatMessageSceen> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                           title: const Text("Block User?"),
-                          content: Text("You won't receive messages from ${widget.receiverName}"),
+                          content: Text(
+                            "You won't receive messages from ${widget.receiverName}",
+                          ),
                           actions: [
                             TextButton(
                               onPressed: () {
@@ -327,7 +354,9 @@ class _ChatMessageSceenState extends State<ChatMessageSceen> {
               if (state.status == ChatStatus.loading) {
                 return const Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppTheme.primaryColor,
+                    ),
                   ),
                 );
               }
@@ -344,9 +373,8 @@ class _ChatMessageSceenState extends State<ChatMessageSceen> {
                       const SizedBox(height: 16),
                       Text(
                         state.error ?? "Something went wrong",
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(color: Colors.grey.shade600),
                       ),
                     ],
                   ),
@@ -390,11 +418,15 @@ class _ChatMessageSceenState extends State<ChatMessageSceen> {
                     child: ListView.builder(
                       controller: _scrollController,
                       reverse: true,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       itemCount: state.messages.length,
                       itemBuilder: (context, index) {
                         final message = state.messages[index];
-                        final isMe = message.senderId == _chatCubit.currentUserId;
+                        final isMe =
+                            message.senderId == _chatCubit.currentUserId;
                         return MessageBubble(message: message, isMe: isMe);
                       },
                     ),
@@ -465,10 +497,11 @@ class _ChatMessageSceenState extends State<ChatMessageSceen> {
                                     decoration: InputDecoration(
                                       hintText: "Type a message...",
                                       border: InputBorder.none,
-                                      contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 20,
-                                        vertical: 12,
-                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 20,
+                                            vertical: 12,
+                                          ),
                                       hintStyle: TextStyle(
                                         color: Colors.grey.shade500,
                                       ),
@@ -491,7 +524,8 @@ class _ChatMessageSceenState extends State<ChatMessageSceen> {
                                   boxShadow: _isComposing
                                       ? [
                                           BoxShadow(
-                                            color: AppTheme.primaryColor.withOpacity(0.3),
+                                            color: AppTheme.primaryColor
+                                                .withOpacity(0.3),
                                             blurRadius: 8,
                                             offset: const Offset(0, 4),
                                           ),
@@ -607,9 +641,7 @@ class MessageBubble extends StatelessWidget {
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            gradient: isMe
-                ? AppTheme.primaryGradient
-                : null,
+            gradient: isMe ? AppTheme.primaryGradient : null,
             color: isMe ? null : Colors.white,
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(20),
