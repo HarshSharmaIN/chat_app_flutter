@@ -2,6 +2,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:chat_app/data/services/stream_token_service.dart';
 
 class VideoCallService {
   static VideoCallService? _instance;
@@ -20,20 +21,26 @@ class VideoCallService {
     required String userId,
     required String userName,
     required String apiKey,
-    required String token,
   }) async {
     try {
-      if (_isInitialized) {
+      if (_isInitialized && _streamVideo != null) {
         log('Video call service already initialized');
         return;
       }
 
-      log('Initializing video call service...');
+      log('Initializing video call service for user: $userId');
+      
+      // Generate token using the service
+      final token = await StreamTokenService.generateUserToken(userId: userId);
       
       _currentUser = User(id: userId, name: userName);
-      _streamVideo = StreamVideo(apiKey, user: _currentUser!, userToken: token);
+      _streamVideo = StreamVideo(
+        apiKey,
+        user: _currentUser!,
+        userToken: token,
+      );
       
-      // Wait for connection
+      // Connect to Stream
       await _streamVideo!.connect();
       _isInitialized = true;
       
@@ -41,6 +48,8 @@ class VideoCallService {
     } catch (e) {
       log('Error initializing video call service: $e');
       _isInitialized = false;
+      _streamVideo = null;
+      _currentUser = null;
       rethrow;
     }
   }
@@ -65,13 +74,17 @@ class VideoCallService {
     }
 
     try {
+      log('Creating call with ID: $callId');
+      
       final call = _streamVideo!.makeCall(
         callType: StreamCallType.defaultType(),
         id: callId,
       );
 
       // Create the call with member IDs
-      await call.getOrCreate(memberIds: memberIds);
+      await call.getOrCreate(memberIds: memberIds.map((id) => MemberRequest(userId: id)).toList());
+      
+      log('Call created successfully');
       return call;
     } catch (e) {
       log('Error creating call: $e');
@@ -83,6 +96,7 @@ class VideoCallService {
     required String callId,
     required List<String> memberIds,
     required BuildContext context,
+    required String receiverName,
   }) async {
     try {
       log('Starting video call...');
@@ -98,16 +112,18 @@ class VideoCallService {
 
       final call = await createCall(callId: callId, memberIds: memberIds);
       
-      // Join the call immediately after creating it
+      // Join the call
       await call.join();
       
       if (context.mounted) {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => CallScreen(
+            builder: (context) => StreamCallScreen(
               call: call,
-              receiverName: 'Video Call', // You can pass the actual name
+              onCallEnded: () {
+                Navigator.pop(context);
+              },
             ),
           ),
         );
@@ -121,6 +137,7 @@ class VideoCallService {
   Future<void> joinCall({
     required String callId,
     required BuildContext context,
+    required String receiverName,
   }) async {
     try {
       if (_streamVideo == null || !_isInitialized) {
@@ -146,9 +163,11 @@ class VideoCallService {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => CallScreen(
+            builder: (context) => StreamCallScreen(
               call: call,
-              receiverName: 'Video Call',
+              onCallEnded: () {
+                Navigator.pop(context);
+              },
             ),
           ),
         );
@@ -167,506 +186,62 @@ class VideoCallService {
   }
 }
 
-class CallScreen extends StatefulWidget {
+// Using Stream's prebuilt call screen
+class StreamCallScreen extends StatefulWidget {
   final Call call;
-  final String receiverName;
+  final VoidCallback onCallEnded;
 
-  const CallScreen({
-    super.key, 
+  const StreamCallScreen({
+    super.key,
     required this.call,
-    this.receiverName = 'Video Call',
+    required this.onCallEnded,
   });
 
   @override
-  State<CallScreen> createState() => _CallScreenState();
+  State<StreamCallScreen> createState() => _StreamCallScreenState();
 }
 
-class _CallScreenState extends State<CallScreen> {
-  bool _isCameraEnabled = true;
-  bool _isMicrophoneEnabled = true;
-  bool _isCallConnected = false;
-  bool _isLoading = true;
-  String? _error;
-
+class _StreamCallScreenState extends State<StreamCallScreen> {
   @override
   void initState() {
     super.initState();
-    _setupCall();
     _listenToCallState();
-  }
-
-  void _setupCall() async {
-    try {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
-
-      // Enable camera and microphone
-      await widget.call.camera.enable();
-      await widget.call.microphone.enable();
-      
-      setState(() {
-        _isLoading = false;
-      });
-    } catch (e) {
-      log('Error setting up call: $e');
-      setState(() {
-        _error = 'Failed to setup call: $e';
-        _isLoading = false;
-      });
-    }
   }
 
   void _listenToCallState() {
     widget.call.state.listen((callState) {
-      if (mounted) {
-        setState(() {
-          _isCallConnected = callState.status == CallStatus.joined;
-        });
+      // Handle call ended
+      if (callState.status == CallStatus.ended || 
+          callState.status == CallStatus.left ||
+          callState.status == CallStatus.rejected) {
+        if (mounted) {
+          widget.onCallEnded();
+        }
       }
     });
   }
 
   @override
-  void dispose() {
-    widget.call.leave();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: _buildBody(),
-      ),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_error != null) {
-      return _buildErrorScreen();
-    }
-
-    if (_isLoading) {
-      return _buildLoadingScreen();
-    }
-
-    return StreamBuilder<CallState>(
-      stream: widget.call.state,
-      builder: (context, snapshot) {
-        final callState = snapshot.data;
-        final participants = callState?.callParticipants ?? [];
-
-        return Stack(
-          children: [
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFF1a1a2e),
-                    Color(0xFF16213e),
-                    Colors.black,
-                  ],
-                ),
-              ),
-            ),
-
-            if (participants.isNotEmpty && _isCallConnected)
-              _buildParticipantsView(participants)
-            else
-              _buildWaitingScreen(),
-
-            Positioned(
-              bottom: 50,
-              left: 0,
-              right: 0,
-              child: _buildControlsBar(),
-            ),
-
-            Positioned(top: 20, left: 20, right: 20, child: _buildTopBar()),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildLoadingScreen() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF1a1a2e),
-            Color(0xFF16213e),
-            Colors.black,
-          ],
-        ),
-      ),
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-            SizedBox(height: 20),
-            Text(
-              'Setting up video call...',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorScreen() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF1a1a2e),
-            Color(0xFF16213e),
-            Colors.black,
-          ],
-        ),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              color: Colors.red,
-              size: 64,
-            ),
-            const SizedBox(height: 20),
-            Text(
-              _error!,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Go Back'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWaitingScreen() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              color: Colors.blue,
-              borderRadius: BorderRadius.circular(60),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.blue.withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Center(
-              child: Text(
-                widget.receiverName[0].toUpperCase(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 48,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 30),
-
-          Text(
-            widget.receiverName,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          Text(
-            _isCallConnected ? 'Connected' : 'Connecting...',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
-              fontSize: 16,
-            ),
-          ),
-
-          if (!_isCallConnected) ...[
-            const SizedBox(height: 20),
-            const SizedBox(
-              width: 30,
-              height: 30,
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                strokeWidth: 2,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildParticipantsView(List<CallParticipantState> participants) {
-    if (participants.length == 1) {
-      return SizedBox.expand(
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: StreamVideoRenderer(
-            call: widget.call,
-            participant: participants.first,
-            videoTrackType: SfuTrackType.video,
-          ),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: GridView.builder(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: participants.length > 4 ? 3 : 2,
-          childAspectRatio: 0.75,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-        ),
-        itemCount: participants.length,
-        itemBuilder: (context, index) {
-          return Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white24, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: StreamVideoRenderer(
-                call: widget.call,
-                participant: participants[index],
-                videoTrackType: SfuTrackType.video,
-              ),
-            ),
+    return StreamCallContainer(
+      call: widget.call,
+      child: StreamCallContent(
+        call: widget.call,
+        callContentBuilder: (
+          BuildContext context,
+          Call call,
+          CallState callState,
+        ) {
+          return StreamCallControls(
+            call: call,
+            localParticipant: callState.localParticipant,
+            onLeaveCallTap: () {
+              call.leave();
+              widget.onCallEnded();
+            },
           );
         },
       ),
     );
-  }
-
-  Widget _buildControlsBar() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      decoration: BoxDecoration(
-        color: Colors.black54,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildControlButton(
-            icon: _isCameraEnabled ? Icons.videocam : Icons.videocam_off,
-            isActive: _isCameraEnabled,
-            onPressed: () async {
-              try {
-                if (_isCameraEnabled) {
-                  await widget.call.camera.disable();
-                } else {
-                  await widget.call.camera.enable();
-                }
-                setState(() {
-                  _isCameraEnabled = !_isCameraEnabled;
-                });
-              } catch (e) {
-                log('Error toggling camera: $e');
-              }
-            },
-          ),
-
-          _buildControlButton(
-            icon: _isMicrophoneEnabled ? Icons.mic : Icons.mic_off,
-            isActive: _isMicrophoneEnabled,
-            onPressed: () async {
-              try {
-                if (_isMicrophoneEnabled) {
-                  await widget.call.microphone.disable();
-                } else {
-                  await widget.call.microphone.enable();
-                }
-                setState(() {
-                  _isMicrophoneEnabled = !_isMicrophoneEnabled;
-                });
-              } catch (e) {
-                log('Error toggling microphone: $e');
-              }
-            },
-          ),
-
-          _buildControlButton(
-            icon: Icons.call_end,
-            isActive: false,
-            backgroundColor: Colors.red,
-            onPressed: () {
-              widget.call.leave();
-              Navigator.pop(context);
-            },
-          ),
-
-          _buildControlButton(
-            icon: Icons.flip_camera_ios,
-            isActive: true,
-            onPressed: () async {
-              try {
-                await widget.call.camera.flip();
-              } catch (e) {
-                log('Error flipping camera: $e');
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildControlButton({
-    required IconData icon,
-    required bool isActive,
-    required VoidCallback onPressed,
-    Color? backgroundColor,
-  }) {
-    return Container(
-      width: 60,
-      height: 60,
-      decoration: BoxDecoration(
-        color: backgroundColor ?? (isActive ? Colors.white24 : Colors.white12),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: isActive ? Colors.white38 : Colors.white24,
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: IconButton(
-        onPressed: onPressed,
-        icon: Icon(icon, color: Colors.white, size: 26),
-      ),
-    );
-  }
-
-  Widget _buildTopBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.black54,
-        borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: _isCallConnected ? Colors.green : Colors.orange,
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Icon(Icons.videocam, color: Colors.white, size: 20),
-          const SizedBox(width: 8),
-          Text(
-            _isCallConnected ? 'Video Call' : 'Connecting...',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const Spacer(),
-          if (_isCallConnected)
-            StreamBuilder<Duration>(
-              stream: Stream.periodic(const Duration(seconds: 1)),
-              builder: (context, snapshot) {
-                final callState = widget.call.state.value;
-                final startedAt = callState.startedAt;
-                if (startedAt != null) {
-                  final duration = DateTime.now().difference(startedAt);
-                  return Text(
-                    _formatDuration(duration),
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  );
-                }
-                return const Text(
-                  '00:00',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final seconds = duration.inSeconds.remainder(60);
-
-    if (hours > 0) {
-      return '${twoDigits(hours)}:${twoDigits(minutes)}:${twoDigits(seconds)}';
-    }
-    return '${twoDigits(minutes)}:${twoDigits(seconds)}';
   }
 }

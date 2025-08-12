@@ -1,49 +1,43 @@
 import 'dart:convert';
 import 'dart:developer';
-import 'package:crypto/crypto.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 
 class StreamTokenService {
-  static String generateUserToken({
+  static const String _tokenUrl = 'https://stream-token-beta.vercel.app/';
+
+  static Future<String> generateUserToken({
     required String userId,
-    String? apiSecret,
-  }) {
+  }) async {
     try {
-      final secret = apiSecret ?? dotenv.env['STREAM_SECRET'] ?? '';
-      if (secret.isEmpty) {
-        throw Exception('Stream API secret not found');
+      log('Generating token for user: $userId');
+      
+      final response = await http.post(
+        Uri.parse(_tokenUrl),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'userId': userId,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final token = data['token'] as String?;
+        
+        if (token != null && token.isNotEmpty) {
+          log('Token generated successfully');
+          return token;
+        } else {
+          throw Exception('Invalid token received from server');
+        }
+      } else {
+        log('Token generation failed: ${response.statusCode} - ${response.body}');
+        throw Exception('Failed to generate token: ${response.statusCode}');
       }
-
-      final header = {
-        'alg': 'HS256',
-        'typ': 'JWT',
-      };
-
-      final payload = {
-        'user_id': userId,
-        'iss': 'stream-video',
-        'sub': 'user/$userId',
-        'iat': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        'exp': DateTime.now().add(const Duration(hours: 24)).millisecondsSinceEpoch ~/ 1000,
-      };
-
-      final encodedHeader = base64Url.encode(utf8.encode(json.encode(header)));
-      final encodedPayload = base64Url.encode(utf8.encode(json.encode(payload)));
-      
-      final signature = _generateSignature('$encodedHeader.$encodedPayload', secret);
-      
-      return '$encodedHeader.$encodedPayload.$signature';
     } catch (e) {
       log('Error generating Stream token: $e');
       rethrow;
     }
-  }
-
-  static String _generateSignature(String data, String secret) {
-    final key = utf8.encode(secret);
-    final bytes = utf8.encode(data);
-    final hmac = Hmac(sha256, key);
-    final digest = hmac.convert(bytes);
-    return base64Url.encode(digest.bytes);
   }
 }

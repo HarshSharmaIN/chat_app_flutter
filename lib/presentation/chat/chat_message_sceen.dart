@@ -109,15 +109,10 @@ class _ChatMessageSceenState extends State<ChatMessageSceen> {
 
       // Initialize video service if not already done
       if (!videoService.isInitialized) {
-        final token = StreamTokenService.generateUserToken(
-          userId: _chatCubit.currentUserId,
-        );
-        
         await videoService.initialize(
           userId: _chatCubit.currentUserId,
           userName: widget.currentUserName,
-          apiKey: dotenv.env['STREAM_API_KEY'] ?? 'your-api-key',
-          token: token,
+          apiKey: 'mmhfdzb5evj2', // Stream's demo API key
         );
       }
 
@@ -131,6 +126,7 @@ class _ChatMessageSceenState extends State<ChatMessageSceen> {
         callId: callId,
         memberIds: [widget.receiverId],
         context: context,
+        receiverName: widget.receiverName,
       );
     } catch (e) {
       // Close loading dialog if it's open
@@ -141,7 +137,7 @@ class _ChatMessageSceenState extends State<ChatMessageSceen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to start video call: $e'),
+            content: Text('Failed to start video call: ${e.toString()}'),
             backgroundColor: AppTheme.errorColor,
           ),
         );
