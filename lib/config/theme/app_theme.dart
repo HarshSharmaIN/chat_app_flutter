@@ -32,12 +32,10 @@ class AppTheme {
       secondary: secondaryColor,
       tertiary: accentColor,
       surface: surfaceColor,
-      background: backgroundColor,
       error: errorColor,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: Color(0xFF2D3436),
-      onBackground: Color(0xFF2D3436),
     ),
 
     scaffoldBackgroundColor: backgroundColor,
@@ -53,10 +51,7 @@ class AppTheme {
         fontWeight: FontWeight.w700,
         letterSpacing: -0.5,
       ),
-      iconTheme: IconThemeData(
-        color: Color(0xFF2D3436),
-        size: 24,
-      ),
+      iconTheme: IconThemeData(color: Color(0xFF2D3436), size: 24),
     ),
 
     inputDecorationTheme: InputDecorationTheme(
@@ -107,9 +102,7 @@ class AppTheme {
         elevation: 0,
         shadowColor: primaryColor.withOpacity(0.3),
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w600,

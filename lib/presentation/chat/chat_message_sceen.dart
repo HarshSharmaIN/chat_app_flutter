@@ -1,8 +1,7 @@
 import 'dart:io';
 import 'package:chat_app/data/models/chat_message.dart';
 import 'package:chat_app/data/services/service_locator.dart';
-import 'package:chat_app/data/services/stream_token_service.dart';
-import 'package:chat_app/data/services/video_call_service.dart';
+import 'package:chat_app/data/services/call_screen.dart';
 import 'package:chat_app/config/theme/app_theme.dart';
 import 'package:chat_app/logic/cubits/chat/chat_cubit.dart';
 import 'package:chat_app/logic/cubits/chat/chat_state.dart';
@@ -10,8 +9,8 @@ import 'package:chat_app/presentation/widgets/loading_dots.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
+import 'package:stream_video_flutter/stream_video_flutter.dart';
 
 class ChatMessageSceen extends StatefulWidget {
   final String receiverId;
@@ -89,59 +88,6 @@ class _ChatMessageSceenState extends State<ChatMessageSceen> {
     if (messages.length != _previousMessages.length) {
       _scrollToBottom();
       _previousMessages = messages;
-    }
-  }
-
-  Future<void> _startVideoCall() async {
-    try {
-      // Show loading indicator
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
-          ),
-        ),
-      );
-
-      final videoService = getIt<VideoCallService>();
-
-      // Initialize video service if not already done
-      if (!videoService.isInitialized) {
-        await videoService.initialize(
-          userId: _chatCubit.currentUserId,
-          userName: widget.currentUserName,
-          apiKey: 'mmhfdzb5evj2', // Stream's demo API key
-        );
-      }
-
-      // Close loading dialog
-      if (mounted) Navigator.pop(context);
-
-      final callId =
-          '${_chatCubit.currentUserId}_${widget.receiverId}_${DateTime.now().millisecondsSinceEpoch}';
-
-      await videoService.startCall(
-        callId: callId,
-        memberIds: [widget.receiverId],
-        context: context,
-        receiverName: widget.receiverName,
-      );
-    } catch (e) {
-      // Close loading dialog if it's open
-      if (mounted && Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to start video call: ${e.toString()}'),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-      }
     }
   }
 
@@ -260,7 +206,24 @@ class _ChatMessageSceenState extends State<ChatMessageSceen> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
-              onPressed: () => _startVideoCall(),
+              onPressed: () async {
+                try {
+                  var call = await _chatCubit.createCall();
+
+                  await call.getOrCreate();
+
+                  // Created ahead
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CallScreen(call: call),
+                    ),
+                  );
+                } catch (e) {
+                  debugPrint('Error joining or creating call: $e');
+                  debugPrint(e.toString());
+                }
+              },
               icon: const Icon(
                 Icons.videocam_rounded,
                 color: AppTheme.primaryColor,

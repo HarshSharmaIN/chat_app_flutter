@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:chat_app/data/repositories/chat_repository.dart';
 import 'package:chat_app/logic/cubits/chat/chat_state.dart';
+import 'package:stream_video_flutter/stream_video_flutter.dart';
 
 class ChatCubit extends Cubit<ChatState> {
   final ChatRepository _chatRepository;
@@ -81,8 +82,9 @@ class ChatCubit extends Cubit<ChatState> {
     if (state.status != ChatStatus.loaded ||
         state.messages.isEmpty ||
         !state.hasMoreMessages ||
-        state.isLoadingMore)
+        state.isLoadingMore) {
       return;
+    }
     try {
       emit(state.copyWith(isLoadingMore: true));
       final lastMessage = state.messages.last;
@@ -248,6 +250,13 @@ class ChatCubit extends Cubit<ChatState> {
     } catch (e) {
       print("Error marking messages as read.");
     }
+  }
+
+  Future<Call> createCall() async {
+    return StreamVideo.instance.makeCall(
+      callType: StreamCallType.defaultType(),
+      id: state.chatRoomId!,
+    );
   }
 
   Future<void> leaveChat() async {

@@ -1,4 +1,3 @@
-import 'package:chat_app/core/common/custom_button.dart';
 import 'package:chat_app/core/utils/ui_utils.dart';
 import 'package:chat_app/config/theme/app_theme.dart';
 import 'package:chat_app/data/services/service_locator.dart';
@@ -54,21 +53,17 @@ class _LoginScreenState extends State<LoginScreen>
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: AppTheme.defaultCurve,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: AppTheme.defaultCurve),
+    );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: AppTheme.defaultCurve,
-    ));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _slideController,
+            curve: AppTheme.defaultCurve,
+          ),
+        );
   }
 
   void _startAnimations() async {
@@ -158,7 +153,7 @@ class _LoginScreenState extends State<LoginScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: 60),
-                          
+
                           // Logo
                           Center(
                             child: Container(
@@ -169,7 +164,9 @@ class _LoginScreenState extends State<LoginScreen>
                                 borderRadius: BorderRadius.circular(20),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppTheme.primaryColor.withOpacity(0.3),
+                                    color: AppTheme.primaryColor.withOpacity(
+                                      0.3,
+                                    ),
                                     blurRadius: 20,
                                     offset: const Offset(0, 10),
                                   ),
@@ -182,9 +179,9 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                             ),
                           ),
-                          
+
                           const SizedBox(height: 40),
-                          
+
                           Center(
                             child: Text(
                               "Welcome Back",
@@ -199,9 +196,8 @@ class _LoginScreenState extends State<LoginScreen>
                           Center(
                             child: Text(
                               "Sign in to continue your conversations",
-                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                color: Colors.grey.shade600,
-                              ),
+                              style: Theme.of(context).textTheme.bodyLarge
+                                  ?.copyWith(color: Colors.grey.shade600),
                             ),
                           ),
                           const SizedBox(height: 50),
@@ -237,7 +233,9 @@ class _LoginScreenState extends State<LoginScreen>
                           ),
                           const SizedBox(height: 40),
                           AnimatedButton(
-                            onPressed: state.status != AuthStatus.loading ? handleSignIn : null,
+                            onPressed: state.status != AuthStatus.loading
+                                ? handleSignIn
+                                : null,
                             text: "Sign In",
                             isLoading: state.status == AuthStatus.loading,
                           ),
@@ -250,13 +248,18 @@ class _LoginScreenState extends State<LoginScreen>
                                 children: [
                                   TextSpan(
                                     text: "Sign Up",
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: AppTheme.primaryColor,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: AppTheme.primaryColor,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                     recognizer: TapGestureRecognizer()
                                       ..onTap = () {
-                                        getIt<AppRouter>().push(const SignupScreen());
+                                        getIt<AppRouter>().push(
+                                          const SignupScreen(),
+                                        );
                                       },
                                   ),
                                 ],

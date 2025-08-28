@@ -1,4 +1,3 @@
-import 'package:chat_app/core/common/custom_button.dart';
 import 'package:chat_app/core/utils/ui_utils.dart';
 import 'package:chat_app/config/theme/app_theme.dart';
 import 'package:chat_app/data/services/service_locator.dart';
@@ -59,21 +58,17 @@ class _SignupScreenState extends State<SignupScreen>
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: AppTheme.defaultCurve,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: AppTheme.defaultCurve),
+    );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: AppTheme.defaultCurve,
-    ));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _slideController,
+            curve: AppTheme.defaultCurve,
+          ),
+        );
   }
 
   void _startAnimations() async {
@@ -214,9 +209,8 @@ class _SignupScreenState extends State<SignupScreen>
                           Center(
                             child: Text(
                               "Join our community and start chatting",
-                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                color: Colors.grey.shade600,
-                              ),
+                              style: Theme.of(context).textTheme.bodyLarge
+                                  ?.copyWith(color: Colors.grey.shade600),
                             ),
                           ),
                           const SizedBox(height: 40),
@@ -235,7 +229,9 @@ class _SignupScreenState extends State<SignupScreen>
                             validator: _validateUsername,
                             hintText: "Choose a username",
                             labelText: "Username",
-                            prefixIcon: const Icon(Icons.alternate_email_outlined),
+                            prefixIcon: const Icon(
+                              Icons.alternate_email_outlined,
+                            ),
                           ),
                           const SizedBox(height: 16),
                           AnimatedTextField(
@@ -279,7 +275,9 @@ class _SignupScreenState extends State<SignupScreen>
                           ),
                           const SizedBox(height: 40),
                           AnimatedButton(
-                            onPressed: state.status != AuthStatus.loading ? handleSignUp : null,
+                            onPressed: state.status != AuthStatus.loading
+                                ? handleSignUp
+                                : null,
                             text: "Create Account",
                             isLoading: state.status == AuthStatus.loading,
                           ),
@@ -292,10 +290,13 @@ class _SignupScreenState extends State<SignupScreen>
                                 children: [
                                   TextSpan(
                                     text: "Sign In",
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: AppTheme.primaryColor,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: AppTheme.primaryColor,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                     recognizer: TapGestureRecognizer()
                                       ..onTap = () {
                                         Navigator.pop(context);

@@ -1,7 +1,7 @@
 import 'package:chat_app/data/repositories/auth_repository.dart';
 import 'package:chat_app/data/repositories/chat_repository.dart';
 import 'package:chat_app/data/repositories/contact_repository.dart';
-import 'package:chat_app/data/services/video_call_service.dart';
+import 'package:chat_app/data/services/call_screen.dart';
 import 'package:chat_app/firebase_options.dart';
 import 'package:chat_app/logic/cubits/auth/auth_cubit.dart';
 import 'package:chat_app/logic/cubits/chat/chat_cubit.dart';
@@ -26,7 +26,6 @@ Future<void> setUpServicelocator() async {
   getIt.registerLazySingleton<FirebaseAuth>(() => FirebaseAuth.instance);
   getIt.registerLazySingleton(() => ContactRepository());
   getIt.registerLazySingleton(() => ChatRepository());
-  getIt.registerLazySingleton(() => VideoCallService.instance);
   getIt.registerLazySingleton(
     () => AuthCubit(authRepository: AuthRepository()),
   );
